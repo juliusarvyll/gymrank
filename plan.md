@@ -8,6 +8,28 @@ This document outlines a strategic roadmap for developing a B2B SaaS platform de
 
 ---
 
+## Implementation Status (as of March 17, 2026)
+
+**Implemented**
+- Supabase schema + RLS for MVP, Phase 1A, Phase 1B
+- Next.js app UI + server actions for core flows
+- Gym onboarding, member management, check-ins (QR + manual)
+- XP events, streaks, challenges, leaderboards, rewards
+- Community feed, notifications
+- Analytics dashboard, inactive member detection, retention nudges
+- CSV export for check-ins
+- Multi-gym networks (Phase 2 item 1)
+- Inter-gym challenges + leaderboards (Phase 2 item 2)
+
+**Not Implemented Yet**
+- Partner/sponsor integrations
+- Regional/city-level competitions
+- Mobile native apps
+- AI/ML prediction models
+- Advanced reporting (scheduled emails/CRM exports)
+
+---
+
 ## Section 1: Project Objectives & Goals
 
 ### Primary Objectives
@@ -31,6 +53,7 @@ This document outlines a strategic roadmap for developing a B2B SaaS platform de
 ### In-Scope Features (MVP + Phase 1)
 
 **Tier 1 - Foundation (MVP)**
+Status: Implemented
 - Gym onboarding & profile management
 - Member management system
 - Check-in system (QR code & manual verification)
@@ -39,6 +62,7 @@ This document outlines a strategic roadmap for developing a B2B SaaS platform de
 - Notifications system
 
 **Tier 2 - Engagement (Phase 1A)**
+Status: Implemented
 - Gamification engine (streaks, achievements)
 - Challenge system (weekly/monthly)
 - Leaderboards (gym, class, challenge)
@@ -46,13 +70,14 @@ This document outlines a strategic roadmap for developing a B2B SaaS platform de
 - Community activity feed
 
 **Tier 3 - Monetization (Phase 1B)**
+Status: Implemented (baseline)
 - Engagement analytics dashboards
 - Retention & motivation tools
 - Member lifecycle insights
 
 ### Out-of-Scope (Future Phases)
 
-- Multi-gym networks & inter-gym competitions (Phase 2)
+- Multi-gym networks & inter-gym competitions (Phase 2) — Implemented
 - Partner & sponsorship integrations (Phase 2)
 - Mobile native apps (Phase 2)
 - Advanced AI/ML prediction models (Phase 3)
@@ -238,7 +263,7 @@ This document outlines a strategic roadmap for developing a B2B SaaS platform de
 
 ---
 
-### Phase 2: Scaling & Network Effects (Weeks 23-32) - Future
+### Phase 2: Scaling & Network Effects (Weeks 23-32) - Partially Implemented
 
 **Objectives:**
 - Expand platform capabilities for multi-gym networks
@@ -246,8 +271,8 @@ This document outlines a strategic roadmap for developing a B2B SaaS platform de
 - Add partnership integrations
 
 **Key Features:**
-- Multi-gym network management
-- Inter-gym challenges & leaderboards
+- Multi-gym network management — Implemented
+- Inter-gym challenges & leaderboards — Implemented
 - Regional/city-level competitions
 - Partner integrations (supplement brands, coaches)
 - Sponsored challenges

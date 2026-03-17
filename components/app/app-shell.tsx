@@ -19,6 +19,8 @@ const navItems = [
   { href: "/app/leaderboards", label: "Leaderboards" },
   { href: "/app/community", label: "Community" },
   { href: "/app/rewards", label: "Rewards" },
+  { href: "/app/networks", label: "Networks" },
+  { href: "/app/inter-gym", label: "Inter-Gym" },
   { href: "/app/analytics", label: "Analytics" },
   { href: "/app/notifications", label: "Notifications" },
   { href: "/app/gyms", label: "Gym Settings" },
