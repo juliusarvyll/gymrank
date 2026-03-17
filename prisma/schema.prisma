@@ -1,0 +1,10 @@
+// Run `npx prisma db pull` after applying `supabase/schema.sql`
+// to your Supabase database to generate the GymRank models.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
