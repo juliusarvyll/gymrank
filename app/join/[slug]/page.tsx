@@ -136,7 +136,7 @@ async function ResolvedJoinGymPage({ params }: JoinGymPageProps) {
 
   if (membership?.status === "active") {
     await supabase.from("profiles").update({ active_gym_id: gym.id }).eq("id", user.id);
-    redirect("/app");
+    redirect("/member");
   }
 
   if (membership?.status === "inactive" || membership?.status === "suspended") {

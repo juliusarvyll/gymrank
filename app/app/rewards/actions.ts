@@ -96,6 +96,9 @@ export async function redeemReward(formData: FormData) {
   revalidatePath("/app/rewards");
   revalidatePath("/app/profile");
   revalidatePath("/app");
+  revalidatePath("/member/rewards");
+  revalidatePath("/member/profile");
+  revalidatePath("/member");
 }
 
 export async function updateRedemptionStatus(formData: FormData) {

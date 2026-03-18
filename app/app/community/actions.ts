@@ -20,6 +20,8 @@ export async function postShoutout(formData: FormData) {
   });
 
   revalidatePath("/app/community");
+  revalidatePath("/member/community");
+  revalidatePath("/member");
 }
 
 export async function toggleActivityReaction(formData: FormData) {
@@ -62,6 +64,8 @@ export async function toggleActivityReaction(formData: FormData) {
   }
 
   revalidatePath("/app/community");
+  revalidatePath("/member/community");
+  revalidatePath("/member");
 }
 
 export async function addActivityComment(formData: FormData) {
@@ -84,4 +88,6 @@ export async function addActivityComment(formData: FormData) {
   }
 
   revalidatePath("/app/community");
+  revalidatePath("/member/community");
+  revalidatePath("/member");
 }

@@ -16,6 +16,8 @@ export async function markNotificationRead(formData: FormData) {
     .eq("id", notificationId);
 
   revalidatePath("/app/notifications");
+  revalidatePath("/member/notifications");
+  revalidatePath("/member");
 }
 
 type ChallengeCompletionNotificationInput = {
@@ -69,5 +71,7 @@ export async function sendChallengeCompletionNotification(
   }
 
   revalidatePath("/app/notifications");
+  revalidatePath("/member/notifications");
+  revalidatePath("/member");
   return true;
 }

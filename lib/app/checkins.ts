@@ -92,6 +92,9 @@ export async function recordCheckin(input: RecordCheckinInput) {
   if (newlyCompleted.length) {
     revalidatePath("/app/challenges");
     revalidatePath("/app/notifications");
+    revalidatePath("/member/challenges");
+    revalidatePath("/member/notifications");
+    revalidatePath("/member");
   }
 
   return checkin.id as string;

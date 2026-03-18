@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { startTransition } from "react";
 
 export function LogoutButton() {
   const router = useRouter();
@@ -10,7 +11,10 @@ export function LogoutButton() {
   const logout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/auth/login");
+    startTransition(() => {
+      router.replace("/auth/login");
+      router.refresh();
+    });
   };
 
   return <Button onClick={logout}>Logout</Button>;

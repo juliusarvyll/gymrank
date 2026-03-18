@@ -9,7 +9,7 @@ export default function Page({
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-sm">
-        <Suspense fallback={<LoginForm redirectTo="/app" />}>
+        <Suspense fallback={<LoginForm redirectTo="/auth/redirect" />}>
           <ResolvedLoginPage searchParams={searchParams} />
         </Suspense>
       </div>
@@ -23,7 +23,7 @@ async function ResolvedLoginPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   const { next } = await searchParams;
-  const redirectTo = next && next.startsWith("/") ? next : "/app";
+  const redirectTo = next && next.startsWith("/") ? next : "/auth/redirect";
 
   return <LoginForm redirectTo={redirectTo} />;
 }

@@ -9,7 +9,7 @@ export default function Page({
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-sm">
-        <Suspense fallback={<SignUpForm redirectTo="/app" />}>
+        <Suspense fallback={<SignUpForm redirectTo="/auth/redirect" />}>
           <ResolvedSignUpPage searchParams={searchParams} />
         </Suspense>
       </div>
@@ -23,7 +23,7 @@ async function ResolvedSignUpPage({
   searchParams: Promise<{ next?: string; accountType?: string }>;
 }) {
   const { next, accountType } = await searchParams;
-  const redirectTo = next && next.startsWith("/") ? next : "/app";
+  const redirectTo = next && next.startsWith("/") ? next : "/auth/redirect";
   const initialAccountType =
     accountType === "owner" || accountType === "member"
       ? (accountType as "owner" | "member")

@@ -18,7 +18,7 @@ import { useState } from "react";
 
 export function SignUpForm({
   className,
-  redirectTo = "/app",
+  redirectTo = "/auth/redirect",
   initialAccountType,
   ...props
 }: React.ComponentPropsWithoutRef<"div"> & {
@@ -145,7 +145,10 @@ export function SignUpForm({
             </div>
             <div className="mt-4 text-center text-sm">
               Already have an account?{" "}
-              <Link href="/auth/login" className="underline underline-offset-4">
+              <Link
+                href={`/auth/login?next=${encodeURIComponent(redirectTo)}`}
+                className="underline underline-offset-4"
+              >
                 Login
               </Link>
             </div>

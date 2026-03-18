@@ -35,4 +35,8 @@ export async function createCheckin(formData: FormData) {
 
   revalidatePath("/app/checkins");
   revalidatePath("/app");
+  revalidatePath("/member/check-in");
+  revalidatePath("/member/challenges");
+  revalidatePath("/member/notifications");
+  revalidatePath("/member");
 }

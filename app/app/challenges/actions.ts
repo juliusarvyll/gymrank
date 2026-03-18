@@ -61,6 +61,8 @@ export async function joinChallenge(formData: FormData) {
 
   if (existingParticipant) {
     revalidatePath("/app/challenges");
+    revalidatePath("/member/challenges");
+    revalidatePath("/member");
     return;
   }
 
@@ -72,6 +74,8 @@ export async function joinChallenge(formData: FormData) {
   if (error) throw new Error(error.message);
 
   revalidatePath("/app/challenges");
+  revalidatePath("/member/challenges");
+  revalidatePath("/member");
 }
 
 export async function completeChallenge(formData: FormData) {
