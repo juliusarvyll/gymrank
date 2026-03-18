@@ -1,6 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { requireActiveGym } from "@/lib/app/server";
+import { sendChallengeCompletionNotification } from "@/app/app/notifications/actions";
 
 export async function createChallenge(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
@@ -40,6 +42,8 @@ export async function createChallenge(formData: FormData) {
   });
 
   if (error) throw new Error(error.message);
+
+  revalidatePath("/app/challenges");
 }
 
 export async function joinChallenge(formData: FormData) {
@@ -54,6 +58,8 @@ export async function joinChallenge(formData: FormData) {
   });
 
   if (error) throw new Error(error.message);
+
+  revalidatePath("/app/challenges");
 }
 
 export async function completeChallenge(formData: FormData) {
@@ -75,9 +81,25 @@ export async function completeChallenge(formData: FormData) {
 
   const { data: challenge } = await supabase
     .from("challenges")
-    .select("reward_points,reward_badge_id")
+    .select("name,reward_points,reward_badge_id")
     .eq("id", challengeId)
     .maybeSingle();
+
+  const { data: participant } = await supabase
+    .from("challenge_participants")
+    .select("completed_at")
+    .eq("challenge_id", challengeId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!participant) {
+    throw new Error("Participant not found for this challenge.");
+  }
+
+  if (participant?.completed_at) {
+    revalidatePath("/app/challenges");
+    return;
+  }
 
   await supabase
     .from("challenge_participants")
@@ -103,4 +125,17 @@ export async function completeChallenge(formData: FormData) {
       badge_id: challenge.reward_badge_id,
     });
   }
+
+  if (challenge) {
+    await sendChallengeCompletionNotification(supabase, {
+      gymId: gym.id,
+      userId,
+      challengeId,
+      challengeName: challenge.name,
+      rewardPoints: challenge.reward_points,
+    });
+  }
+
+  revalidatePath("/app/challenges");
+  revalidatePath("/app/notifications");
 }

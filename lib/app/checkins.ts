@@ -1,4 +1,6 @@
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { sendChallengeCompletionNotification } from "@/app/app/notifications/actions";
 
 type RecordCheckinInput = {
   gymId: string;
@@ -11,6 +13,20 @@ type RecordCheckinInput = {
 
 export async function recordCheckin(input: RecordCheckinInput) {
   const supabase = await createClient();
+  const { data: gymChallenges } = await supabase
+    .from("challenges")
+    .select("id,name,reward_points")
+    .eq("gym_id", input.gymId);
+
+  const challengeIds = gymChallenges?.map((challenge) => challenge.id) ?? [];
+  const { data: beforeCompletions } = challengeIds.length
+    ? await supabase
+        .from("challenge_participants")
+        .select("challenge_id,completed_at")
+        .eq("user_id", input.userId)
+        .in("challenge_id", challengeIds)
+    : { data: [] };
+
   const { data: checkin, error } = await supabase
     .from("checkins")
     .insert({
@@ -42,6 +58,41 @@ export async function recordCheckin(input: RecordCheckinInput) {
     event_type: "checkin",
     data: { source: input.source ?? "manual" },
   });
+
+  const { data: afterCompletions } = challengeIds.length
+    ? await supabase
+        .from("challenge_participants")
+        .select("challenge_id,completed_at")
+        .eq("user_id", input.userId)
+        .in("challenge_id", challengeIds)
+    : { data: [] };
+
+  const beforeMap = new Map(
+    beforeCompletions?.map((row) => [row.challenge_id, row.completed_at]) ?? [],
+  );
+  const newlyCompleted =
+    afterCompletions?.filter((row) => {
+      const previous = beforeMap.get(row.challenge_id);
+      return row.completed_at && row.completed_at !== previous;
+    }) ?? [];
+
+  for (const completion of newlyCompleted) {
+    const challenge = gymChallenges?.find((row) => row.id === completion.challenge_id);
+    if (!challenge) continue;
+
+    await sendChallengeCompletionNotification(supabase, {
+      gymId: input.gymId,
+      userId: input.userId,
+      challengeId: challenge.id,
+      challengeName: challenge.name,
+      rewardPoints: challenge.reward_points,
+    });
+  }
+
+  if (newlyCompleted.length) {
+    revalidatePath("/app/challenges");
+    revalidatePath("/app/notifications");
+  }
 
   return checkin.id as string;
 }
