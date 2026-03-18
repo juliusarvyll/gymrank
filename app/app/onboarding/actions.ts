@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function createGym(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
@@ -26,7 +27,10 @@ export async function createGym(formData: FormData) {
     redirect("/auth/login");
   }
 
-  const { data: gym, error: gymError } = await supabase
+  const admin = createAdminClient();
+  const db = admin ?? supabase;
+
+  const { data: gym, error: gymError } = await db
     .from("gyms")
     .insert({
       name,
@@ -41,17 +45,23 @@ export async function createGym(formData: FormData) {
     throw new Error(gymError.message);
   }
 
-  await supabase.from("gym_memberships").insert({
+  await db.from("gym_memberships").insert({
     gym_id: gym.id,
     user_id: user.id,
     role: "owner",
     status: "active",
   });
 
-  await supabase
+  await db
     .from("profiles")
-    .update({ active_gym_id: gym.id })
-    .eq("id", user.id);
+    .upsert(
+      {
+        id: user.id,
+        email: user.email,
+        active_gym_id: gym.id,
+      },
+      { onConflict: "id" },
+    );
 
   redirect("/app");
 }

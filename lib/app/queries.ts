@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type ActiveGym = {
   id: string;
@@ -48,7 +49,10 @@ export async function getActiveGymForUser(userId: string) {
     .limit(1);
 
   const fallbackGymId = memberships?.[0]?.gym_id;
-  if (!fallbackGymId) return null;
+  if (!fallbackGymId) {
+    const claimed = await claimOwnedGym(userId);
+    return claimed;
+  }
 
   await supabase
     .from("profiles")
@@ -62,6 +66,40 @@ export async function getActiveGymForUser(userId: string) {
     .maybeSingle();
 
   return gym as ActiveGym | null;
+}
+
+async function claimOwnedGym(userId: string) {
+  const admin = createAdminClient();
+  if (!admin) return null;
+
+  const { data: ownedGym } = await admin
+    .from("gyms")
+    .select("id,name,slug,timezone")
+    .eq("owner_user_id", userId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (!ownedGym) return null;
+
+  await admin.from("gym_memberships").upsert(
+    {
+      gym_id: ownedGym.id,
+      user_id: userId,
+      role: "owner",
+      status: "active",
+    },
+    { onConflict: "gym_id,user_id" },
+  );
+
+  await admin
+    .from("profiles")
+    .upsert(
+      { id: userId, active_gym_id: ownedGym.id },
+      { onConflict: "id" },
+    );
+
+  return ownedGym as ActiveGym;
 }
 
 export async function getUserMembershipRole(userId: string, gymId: string) {
