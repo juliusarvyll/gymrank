@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import QRCode from "qrcode";
-import { createClient } from "@/lib/supabase/server";
-import { getActiveGymForUser } from "@/lib/app/queries";
+import { requireActiveGym } from "@/lib/app/server";
 import { createCheckinToken } from "@/lib/app/checkins";
 import { Card } from "@/components/ui/card";
 
@@ -9,16 +8,16 @@ const baseUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
-export default async function CheckinQrPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export default function CheckinQrPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading QR check-in...</div>}>
+      <CheckinQrContent />
+    </Suspense>
+  );
+}
 
-  if (!user) redirect("/auth/login");
-
-  const gym = await getActiveGymForUser(user.id);
-  if (!gym) redirect("/app/onboarding");
+async function CheckinQrContent() {
+  const { gym, user } = await requireActiveGym();
 
   const token = await createCheckinToken(gym.id, user.id);
   const qrUrl = `${baseUrl}/app/checkins/qr/${token.token}`;

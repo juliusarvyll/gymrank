@@ -1,9 +1,18 @@
+import { Suspense } from "react";
 import { requireActiveGym } from "@/lib/app/server";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { generateRetentionAlerts } from "./actions";
 
-export default async function AnalyticsPage() {
+export default function AnalyticsPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading analytics...</div>}>
+      <AnalyticsContent />
+    </Suspense>
+  );
+}
+
+async function AnalyticsContent() {
   const { supabase, gym } = await requireActiveGym();
 
   const { data: challengeIds } = await supabase

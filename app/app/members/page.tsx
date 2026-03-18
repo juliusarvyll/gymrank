@@ -1,17 +1,33 @@
+import { Suspense } from "react";
+import QRCode from "qrcode";
 import { requireActiveGym } from "@/lib/app/server";
-import { addMember, updateMemberStatus } from "./actions";
+import { addMember, updateMemberAccess } from "./actions";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-export default async function MembersPage() {
+const baseUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
+export default function MembersPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading members...</div>}>
+      <MembersContent />
+    </Suspense>
+  );
+}
+
+async function MembersContent() {
   const { supabase, gym, user } = await requireActiveGym();
+  const joinUrl = `${baseUrl}/join/${gym.slug}`;
+  const joinQrDataUrl = await QRCode.toDataURL(joinUrl, { margin: 1, width: 220 });
 
   const { data: memberships } = await supabase
     .from("gym_memberships")
-    .select("user_id,role,status,joined_at")
+    .select("user_id,role,status,tier,joined_at")
     .eq("gym_id", gym.id)
     .order("joined_at", { ascending: false });
 
@@ -48,6 +64,7 @@ export default async function MembersPage() {
   );
 
   const canManage = myRole?.role === "owner" || myRole?.role === "staff";
+  const isOwner = myRole?.role === "owner";
 
   return (
     <div className="space-y-6">
@@ -77,11 +94,21 @@ export default async function MembersPage() {
                 id="role"
                 name="role"
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                disabled={!isOwner}
               >
                 <option value="member">Member</option>
-                <option value="staff">Staff</option>
-                <option value="owner">Owner</option>
+                {isOwner ? <option value="staff">Staff</option> : null}
+                {isOwner ? <option value="owner">Owner</option> : null}
               </select>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="tier">Subscription</Label>
+              <Input
+                id="tier"
+                name="tier"
+                placeholder={isOwner ? "Basic, Premium, VIP" : "Owner-managed"}
+                disabled={!isOwner}
+              />
             </div>
             <div className="md:col-span-3">
               <Button type="submit">Add member</Button>
@@ -93,6 +120,30 @@ export default async function MembersPage() {
           </p>
         )}
       </Card>
+
+      {isOwner ? (
+        <Card className="p-6 space-y-4">
+          <h2 className="text-sm font-semibold">Gym-goer sign-up QR</h2>
+          <p className="text-sm text-muted-foreground">
+            Let gym-goers scan this QR to log in or create an account, then request access to {gym.name}.
+          </p>
+          <div className="flex flex-col items-start gap-4 md:flex-row md:items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={joinQrDataUrl}
+              alt={`Join ${gym.name} QR`}
+              className="h-56 w-56 rounded-md border border-border/60"
+            />
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <div className="font-medium text-foreground">{gym.name}</div>
+              <div className="break-all">{joinUrl}</div>
+              <div>
+                New gym-goers will be asked to sign up first if they do not have an account yet.
+              </div>
+            </div>
+          </div>
+        </Card>
+      ) : null}
 
       <Card className="p-6 space-y-4">
         <h2 className="text-sm font-semibold">Member list</h2>
@@ -117,13 +168,30 @@ export default async function MembersPage() {
                     {stat?.total_checkins ?? 0} · Streak{" "}
                     {stat?.current_streak ?? 0}
                   </div>
+                  <div className="text-xs text-muted-foreground">
+                    Subscription: {member.tier || "Not set"}
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <Badge variant="secondary">{member.role}</Badge>
                   <Badge variant="outline">{member.status}</Badge>
                   {canManage ? (
-                    <form action={updateMemberStatus}>
+                    <form
+                      action={updateMemberAccess}
+                      className="flex flex-wrap items-center gap-2"
+                    >
                       <input type="hidden" name="user_id" value={member.user_id} />
+                      {isOwner ? (
+                        <select
+                          name="role"
+                          className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+                          defaultValue={member.role}
+                        >
+                          <option value="member">Member</option>
+                          <option value="staff">Staff</option>
+                          <option value="owner">Owner</option>
+                        </select>
+                      ) : null}
                       <select
                         name="status"
                         className="rounded-md border border-border bg-background px-2 py-1 text-xs"
@@ -133,7 +201,15 @@ export default async function MembersPage() {
                         <option value="inactive">Inactive</option>
                         <option value="suspended">Suspended</option>
                       </select>
-                      <Button type="submit" size="sm" className="ml-2">
+                      {isOwner ? (
+                        <Input
+                          name="tier"
+                          defaultValue={member.tier ?? ""}
+                          placeholder="Subscription"
+                          className="h-8 w-36 text-xs"
+                        />
+                      ) : null}
+                      <Button type="submit" size="sm">
                         Update
                       </Button>
                     </form>

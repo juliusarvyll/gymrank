@@ -1,23 +1,34 @@
-import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { AppShell } from "@/components/app/app-shell";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/app/server";
 import { getActiveGymForUser, getUserMembershipRole } from "@/lib/app/queries";
 
-export const dynamic = "force-dynamic";
-
-export default async function AppLayout({
+export default function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  return (
+    <Suspense
+      fallback={
+        <AppShell>
+          <div className="p-6 text-sm text-muted-foreground">
+            Loading workspace...
+          </div>
+        </AppShell>
+      }
+    >
+      <ResolvedAppLayout>{children}</ResolvedAppLayout>
+    </Suspense>
+  );
+}
 
-  if (!user) {
-    redirect("/auth/login");
-  }
+async function ResolvedAppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { user } = await requireUser();
 
   const gym = await getActiveGymForUser(user.id);
   const role = gym ? await getUserMembershipRole(user.id, gym.id) : null;

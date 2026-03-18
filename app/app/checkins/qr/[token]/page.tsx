@@ -1,12 +1,25 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { consumeCheckinToken } from "@/lib/app/checkins";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 
-export default async function QrCheckinConsumePage({
+export default function QrCheckinConsumePage({
   params,
 }: {
-  params: { token: string };
+  params: Promise<{ token: string }>;
+}) {
+  return (
+    <Suspense fallback={<div className="max-w-lg p-6 text-sm text-muted-foreground">Confirming check-in...</div>}>
+      <QrCheckinConsumeContent params={params} />
+    </Suspense>
+  );
+}
+
+async function QrCheckinConsumeContent({
+  params,
+}: {
+  params: Promise<{ token: string }>;
 }) {
   const supabase = await createClient();
   const {
@@ -15,8 +28,10 @@ export default async function QrCheckinConsumePage({
 
   if (!user) redirect("/auth/login");
 
+  const { token } = await params;
+
   try {
-    await consumeCheckinToken(params.token, user.id);
+    await consumeCheckinToken(token, user.id);
   } catch (error) {
     return (
       <div className="max-w-lg">

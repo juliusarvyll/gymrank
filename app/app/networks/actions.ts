@@ -1,6 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/app/server";
 
@@ -18,6 +20,13 @@ export async function createNetwork(formData: FormData) {
   }
 
   const { supabase, user } = await requireUser();
+  const admin = createAdminClient();
+
+  if (!admin) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY is required to create networks.",
+    );
+  }
 
   const { data: network, error } = await supabase
     .from("gym_networks")
@@ -27,17 +36,30 @@ export async function createNetwork(formData: FormData) {
 
   if (error) throw new Error(error.message);
 
-  await supabase.from("network_memberships").insert({
-    network_id: network.id,
-    user_id: user.id,
-    role: "owner",
-    status: "active",
-  });
+  const { error: membershipError } = await admin
+    .from("network_memberships")
+    .insert({
+      network_id: network.id,
+      user_id: user.id,
+      role: "owner",
+      status: "active",
+    });
 
-  await supabase
+  if (membershipError) {
+    throw new Error(membershipError.message);
+  }
+
+  const { error: profileError } = await admin
     .from("profiles")
     .update({ active_network_id: network.id })
     .eq("id", user.id);
+
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
+
+  revalidatePath("/app/networks");
+  revalidatePath("/app/inter-gym");
 
   redirect("/app/networks");
 }
@@ -52,10 +74,33 @@ export async function setActiveNetwork(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) return;
 
-  await supabase
+  const { data: membership, error: membershipError } = await supabase
+    .from("network_memberships")
+    .select("network_id")
+    .eq("network_id", networkId)
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (membershipError) {
+    throw new Error(membershipError.message);
+  }
+
+  if (!membership) {
+    throw new Error("You are not an active member of that network.");
+  }
+
+  const { error } = await supabase
     .from("profiles")
     .update({ active_network_id: networkId })
     .eq("id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/app/networks");
+  revalidatePath("/app/inter-gym");
 }
 
 export async function addGymToNetwork(formData: FormData) {
@@ -65,11 +110,21 @@ export async function addGymToNetwork(formData: FormData) {
 
   const { supabase, user } = await requireUser();
 
-  await supabase.from("network_gyms").insert({
-    network_id: networkId,
-    gym_id: gymId,
-    added_by: user.id,
-  });
+  const { error } = await supabase.from("network_gyms").upsert(
+    {
+      network_id: networkId,
+      gym_id: gymId,
+      added_by: user.id,
+    },
+    { onConflict: "network_id,gym_id" },
+  );
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/app/networks");
+  revalidatePath("/app/inter-gym");
 }
 
 export async function addNetworkMember(formData: FormData) {
@@ -79,9 +134,16 @@ export async function addNetworkMember(formData: FormData) {
 
   if (!networkId || !email) return;
 
-  const { supabase } = await requireUser();
+  await requireUser();
+  const admin = createAdminClient();
 
-  const { data: profile, error } = await supabase
+  if (!admin) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY is required to invite network members.",
+    );
+  }
+
+  const { data: profile, error } = await admin
     .from("profiles")
     .select("id")
     .eq("email", email)
@@ -91,10 +153,22 @@ export async function addNetworkMember(formData: FormData) {
     throw new Error(error?.message || "User not found.");
   }
 
-  await supabase.from("network_memberships").insert({
-    network_id: networkId,
-    user_id: profile.id,
-    role,
-    status: "active",
-  });
+  const { error: membershipError } = await admin
+    .from("network_memberships")
+    .upsert(
+      {
+        network_id: networkId,
+        user_id: profile.id,
+        role,
+        status: "active",
+      },
+      { onConflict: "network_id,user_id" },
+    );
+
+  if (membershipError) {
+    throw new Error(membershipError.message);
+  }
+
+  revalidatePath("/app/networks");
+  revalidatePath("/app/inter-gym");
 }

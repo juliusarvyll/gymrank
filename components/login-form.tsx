@@ -18,8 +18,9 @@ import { useState } from "react";
 
 export function LoginForm({
   className,
+  redirectTo = "/app",
   ...props
-}: React.ComponentPropsWithoutRef<"div">) {
+}: React.ComponentPropsWithoutRef<"div"> & { redirectTo?: string }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +39,7 @@ export function LoginForm({
         password,
       });
       if (error) throw error;
-      router.push("/app");
+      router.push(redirectTo);
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
@@ -95,7 +96,7 @@ export function LoginForm({
             <div className="mt-4 text-center text-sm">
               Don&apos;t have an account?{" "}
               <Link
-                href="/auth/sign-up"
+                href={`/auth/sign-up?next=${encodeURIComponent(redirectTo)}`}
                 className="underline underline-offset-4"
               >
                 Sign up

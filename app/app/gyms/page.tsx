@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { requireActiveGym } from "@/lib/app/server";
 import { addBranch, setActiveGym, updateGymProfile } from "./actions";
 import { Card } from "@/components/ui/card";
@@ -6,7 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 
-export default async function GymsPage() {
+export default function GymsPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading gym settings...</div>}>
+      <GymsContent />
+    </Suspense>
+  );
+}
+
+async function GymsContent() {
   const { supabase, gym, user } = await requireActiveGym();
 
   const [{ data: gyms }, { data: branches }] = await Promise.all([

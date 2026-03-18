@@ -532,6 +532,25 @@ create table if not exists activity_events (
   created_at timestamptz not null default now()
 );
 
+create table if not exists activity_reactions (
+  id uuid primary key default gen_random_uuid(),
+  gym_id uuid not null references gyms on delete cascade,
+  activity_event_id uuid not null references activity_events on delete cascade,
+  user_id uuid not null references auth.users on delete cascade,
+  reaction_type text not null default 'like',
+  created_at timestamptz not null default now(),
+  unique (activity_event_id, user_id)
+);
+
+create table if not exists activity_comments (
+  id uuid primary key default gen_random_uuid(),
+  gym_id uuid not null references gyms on delete cascade,
+  activity_event_id uuid not null references activity_events on delete cascade,
+  user_id uuid not null references auth.users on delete cascade,
+  body text not null,
+  created_at timestamptz not null default now()
+);
+
 -- Notifications
 create table if not exists notifications (
   id uuid primary key default gen_random_uuid(),
@@ -582,6 +601,8 @@ create or replace function public.is_gym_role(p_gym_id uuid, p_roles membership_
 returns boolean
 language sql
 stable
+security definer
+set search_path = public
 as $$
   select exists (
     select 1
@@ -597,6 +618,8 @@ create or replace function public.is_gym_member(p_gym_id uuid)
 returns boolean
 language sql
 stable
+security definer
+set search_path = public
 as $$
   select public.is_gym_role(
     p_gym_id,
@@ -608,6 +631,8 @@ create or replace function public.is_gym_staff(p_gym_id uuid)
 returns boolean
 language sql
 stable
+security definer
+set search_path = public
 as $$
   select public.is_gym_role(
     p_gym_id,
@@ -619,6 +644,8 @@ create or replace function public.is_gym_owner(p_gym_id uuid)
 returns boolean
 language sql
 stable
+security definer
+set search_path = public
 as $$
   select public.is_gym_role(
     p_gym_id,
@@ -630,6 +657,8 @@ create or replace function public.is_network_role(p_network_id uuid, p_roles net
 returns boolean
 language sql
 stable
+security definer
+set search_path = public
 as $$
   select exists (
     select 1
@@ -645,6 +674,8 @@ create or replace function public.is_network_member(p_network_id uuid)
 returns boolean
 language sql
 stable
+security definer
+set search_path = public
 as $$
   select public.is_network_role(
     p_network_id,
@@ -656,6 +687,8 @@ create or replace function public.is_network_admin(p_network_id uuid)
 returns boolean
 language sql
 stable
+security definer
+set search_path = public
 as $$
   select public.is_network_role(
     p_network_id,
@@ -843,6 +876,28 @@ using (public.is_gym_member(gym_id));
 create policy "activity insert by members"
 on activity_events for insert
 with check (public.is_gym_member(gym_id));
+
+alter table activity_reactions enable row level security;
+create policy "activity reactions readable by members"
+on activity_reactions for select
+using (public.is_gym_member(gym_id));
+create policy "activity reactions insert by members"
+on activity_reactions for insert
+with check (auth.uid() = user_id and public.is_gym_member(gym_id));
+create policy "activity reactions delete by members"
+on activity_reactions for delete
+using (auth.uid() = user_id);
+
+alter table activity_comments enable row level security;
+create policy "activity comments readable by members"
+on activity_comments for select
+using (public.is_gym_member(gym_id));
+create policy "activity comments insert by members"
+on activity_comments for insert
+with check (auth.uid() = user_id and public.is_gym_member(gym_id));
+create policy "activity comments delete by members"
+on activity_comments for delete
+using (auth.uid() = user_id);
 
 alter table notifications enable row level security;
 create policy "notifications readable by members"

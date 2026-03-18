@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { requireActiveGym } from "@/lib/app/server";
 import { completeChallenge, createChallenge, joinChallenge } from "./actions";
 import { Card } from "@/components/ui/card";
@@ -58,7 +59,15 @@ function formatDate(value: string | null) {
   return value ? new Date(value).toLocaleDateString() : "-";
 }
 
-export default async function ChallengesPage() {
+export default function ChallengesPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading challenges...</div>}>
+      <ChallengesContent />
+    </Suspense>
+  );
+}
+
+async function ChallengesContent() {
   const { supabase, gym, user } = await requireActiveGym();
 
   const [{ data: challengeRows }, { data: myRole }] = await Promise.all([

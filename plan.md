@@ -8,25 +8,42 @@ This document outlines a strategic roadmap for developing a B2B SaaS platform de
 
 ---
 
-## Implementation Status (as of March 17, 2026)
+## Implementation Status (audited March 18, 2026)
+
+This status reflects the current codebase and connected Supabase project, not only the intended roadmap.
 
 **Implemented**
-- Supabase schema + RLS for MVP, Phase 1A, Phase 1B
-- Next.js app UI + server actions for core flows
-- Gym onboarding, member management, check-ins (QR + manual)
-- XP events, streaks, challenges, leaderboards, rewards
-- Community feed, notifications
-- Analytics dashboard, inactive member detection, retention nudges
-- CSV export for check-ins
-- Multi-gym networks (Phase 2 item 1)
-- Inter-gym challenges + leaderboards (Phase 2 item 2)
+- Core Supabase schema + RLS for gyms, memberships, check-ins, classes, challenges, rewards, notifications, analytics views, and network tables
+- Next.js app shell, auth flow, and server actions for core gym workflows
+- Gym onboarding and active gym selection
+- Member management with role assignment and status updates for existing users
+- Check-ins via manual entry and QR token flow
+- XP, streak, and member stats tracking
+- Gym challenge creation, participation, progress tracking, and completion flows
+- Leaderboards for XP, streaks, check-ins, class attendance, and challenge standings
+- Rewards catalog, redemption, and staff fulfillment updates
+- Community shoutouts, activity feed, reactions, and comments
+- Notifications inbox and mark-read flow
+- Analytics dashboard with weekly attendance, inactive member view, retention nudges, and CSV export
+- Multi-gym network management baseline
+- Inter-gym challenge and inter-gym leaderboard baseline
+
+**Partially Implemented**
+- Gym branding: schema exists, but no full UI for logo/colors/branding management
+- Staff/coach account creation: staff can add existing users by email, but there is no invite or provisioning flow
+- Leveling system: XP/streaks exist, but no explicit level computation or progress UI
+- Badges/achievements: schema exists, but there is no full badge management or user-facing badge experience
+- Time-based leaderboard filtering is still not built
+- Challenge invitations are still not built
+- Analytics/reporting: dashboard and CSV export exist, but scheduled emails, CRM exports, and richer reporting are not built
+- Networks/inter-gym: code and schema exist, but the live project has not yet been meaningfully populated or validated with real data
 
 **Not Implemented Yet**
 - Partner/sponsor integrations
 - Regional/city-level competitions
 - Mobile native apps
 - AI/ML prediction models
-- Advanced reporting (scheduled emails/CRM exports)
+- Advanced reporting automation (scheduled emails / CRM exports)
 
 ---
 
@@ -53,7 +70,7 @@ This document outlines a strategic roadmap for developing a B2B SaaS platform de
 ### In-Scope Features (MVP + Phase 1)
 
 **Tier 1 - Foundation (MVP)**
-Status: Implemented
+Status: Mostly implemented
 - Gym onboarding & profile management
 - Member management system
 - Check-in system (QR code & manual verification)
@@ -70,14 +87,14 @@ Status: Implemented
 - Community activity feed
 
 **Tier 3 - Monetization (Phase 1B)**
-Status: Implemented (baseline)
+Status: Baseline implemented
 - Engagement analytics dashboards
 - Retention & motivation tools
 - Member lifecycle insights
 
 ### Out-of-Scope (Future Phases)
 
-- Multi-gym networks & inter-gym competitions (Phase 2) — Implemented
+- Multi-gym networks & inter-gym competitions (Phase 2) - Baseline implemented
 - Partner & sponsorship integrations (Phase 2)
 - Mobile native apps (Phase 2)
 - Advanced AI/ML prediction models (Phase 3)
@@ -621,6 +638,6 @@ Phase 2: Scaling (Weeks 23+)
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: March 17, 2026  
+**Document Version**: 1.1  
+**Last Updated**: March 18, 2026  
 **Next Review Date**: Weekly during execution

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { requireActiveGym } from "@/lib/app/server";
 import {
   createReward,
@@ -10,13 +11,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 
-export default async function RewardsPage() {
+export default function RewardsPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading rewards...</div>}>
+      <RewardsContent />
+    </Suspense>
+  );
+}
+
+async function RewardsContent() {
   const { supabase, gym, user } = await requireActiveGym();
 
   const [
     { data: rewards },
     { data: redemptions },
     { data: myRole },
+    { data: myStats },
   ] = await Promise.all([
     supabase
       .from("rewards")
@@ -35,9 +45,16 @@ export default async function RewardsPage() {
       .eq("gym_id", gym.id)
       .eq("user_id", user.id)
       .maybeSingle(),
+    supabase
+      .from("member_stats")
+      .select("total_xp")
+      .eq("gym_id", gym.id)
+      .eq("user_id", user.id)
+      .maybeSingle(),
   ]);
 
   const canManage = myRole?.role === "owner" || myRole?.role === "staff";
+  const myXp = myStats?.total_xp ?? 0;
 
   const userIds = Array.from(
     new Set(redemptions?.map((r) => r.user_id) ?? []),
@@ -93,7 +110,12 @@ export default async function RewardsPage() {
       </Card>
 
       <Card className="p-6 space-y-4">
-        <h2 className="text-sm font-semibold">Reward catalog</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold">Reward catalog</h2>
+          {!canManage ? (
+            <Badge variant="secondary">{myXp} XP available</Badge>
+          ) : null}
+        </div>
         <div className="space-y-3">
           {rewards?.map((reward) => (
             <div
@@ -108,9 +130,19 @@ export default async function RewardsPage() {
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <Badge variant="secondary">{reward.xp_cost} XP</Badge>
+                {reward.stock !== null ? (
+                  <Badge variant="outline">{reward.stock} left</Badge>
+                ) : null}
                 <form action={redeemReward}>
                   <input type="hidden" name="reward_id" value={reward.id} />
-                  <Button size="sm" type="submit">
+                  <Button
+                    size="sm"
+                    type="submit"
+                    disabled={
+                      myXp < reward.xp_cost ||
+                      (reward.stock !== null && reward.stock <= 0)
+                    }
+                  >
                     Redeem
                   </Button>
                 </form>
@@ -124,9 +156,14 @@ export default async function RewardsPage() {
       </Card>
 
       <Card className="p-6 space-y-4">
-        <h2 className="text-sm font-semibold">Recent redemptions</h2>
+        <h2 className="text-sm font-semibold">
+          {canManage ? "Recent redemptions" : "Your redemptions"}
+        </h2>
         <div className="space-y-3 text-sm text-muted-foreground">
-          {redemptions?.map((redemption) => {
+          {(canManage
+            ? redemptions
+            : redemptions?.filter((redemption) => redemption.user_id === user.id)
+          )?.map((redemption) => {
             const profile = profileMap.get(redemption.user_id);
             return (
               <div
@@ -135,10 +172,14 @@ export default async function RewardsPage() {
               >
                 <div>
                   <div className="text-foreground">
-                    {profile?.full_name || profile?.email || redemption.user_id}
+                    {canManage
+                      ? profile?.full_name || profile?.email || redemption.user_id
+                      : "Reward redemption"}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {redemption.status}
+                    {canManage
+                      ? redemption.status
+                      : `${redemption.status} • ${new Date(redemption.created_at).toLocaleDateString()}`}
                   </div>
                 </div>
                 {canManage ? (
@@ -167,7 +208,9 @@ export default async function RewardsPage() {
               </div>
             );
           })}
-          {!redemptions?.length ? (
+          {!(canManage
+            ? redemptions?.length
+            : redemptions?.some((redemption) => redemption.user_id === user.id)) ? (
             <div className="text-sm text-muted-foreground">
               No redemptions yet.
             </div>

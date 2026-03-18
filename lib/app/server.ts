@@ -1,12 +1,10 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getActiveGymForUser } from "@/lib/app/queries";
+import { getActiveGymForUser, getAuthedUser } from "@/lib/app/queries";
 
 export async function requireUser() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthedUser();
   if (!user) redirect("/auth/login");
   return { supabase, user };
 }

@@ -44,7 +44,7 @@ Current audit baseline:
   - Validation passed for `npm run build`; `npm run lint` still reports an unrelated unused variable in `app/app/classes/page.tsx`, which is outside T1 scope.
 
 ### T2: Expanded Leaderboards
-- **status**: pending
+- **status**: completed
 - **depends_on**: []
 - **locations**:
   - `app/app/leaderboards/page.tsx`
@@ -61,10 +61,12 @@ Current audit baseline:
   - `npm run build`
   - `npm run lint`
 - **work_log**:
-  - Pending
+  - Rebuilt the leaderboard experience into multiple boards for XP, streaks, check-ins, class attendance, and challenge standings.
+  - Added shared leaderboard query helpers and surfaced class attendance context inside the classes screen.
+  - Validation passed for `npm run build` and `npm run lint`.
 
 ### T3: Community Social Features
-- **status**: pending
+- **status**: completed
 - **depends_on**: []
 - **locations**:
   - `app/app/community/page.tsx`
@@ -82,10 +84,13 @@ Current audit baseline:
   - `npm run build`
   - `npm run lint`
 - **work_log**:
-  - Pending
+  - Added community reactions and comments with UI, actions, and a dedicated Supabase migration.
+  - Extended the community feed to display like/comment counts and recent comments.
+  - Applied the new schema to the connected Supabase project and verified the new tables exist.
+  - Validation passed for `npm run build` and `npm run lint`.
 
 ### T4: Phase 1A Integration And Verification
-- **status**: pending
+- **status**: completed
 - **depends_on**: [T1, T2, T3]
 - **locations**:
   - `plan.md`
@@ -101,9 +106,13 @@ Current audit baseline:
   - `npm run build`
   - `npm run lint`
 - **work_log**:
-  - Pending
+  - Integrated challenge, leaderboard, and community work into the main worktree.
+  - Applied the activity comment/reaction migration to Supabase and confirmed the new tables exist.
+  - Cleared the remaining lint issue in the classes page and reran verification.
+  - Validation passed for `npm run build` and `npm run lint`.
 
 ## Execution Log
 
 - Wave 1: T1, T2, T3
 - Wave 2: T4
+- Completed: T1, T2, T3, T4

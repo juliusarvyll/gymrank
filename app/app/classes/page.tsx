@@ -1,11 +1,26 @@
+import { Suspense } from "react";
 import { requireActiveGym } from "@/lib/app/server";
+import { getClassAttendanceLeaderboard } from "@/lib/app/queries";
 import { createClassSession, markAttendance } from "./actions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 
-export default async function ClassesPage() {
+function formatName(member: { full_name: string | null; email: string | null }) {
+  return member.full_name || member.email || "Unknown member";
+}
+
+export default function ClassesPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading classes...</div>}>
+      <ClassesContent />
+    </Suspense>
+  );
+}
+
+async function ClassesContent() {
   const { supabase, gym } = await requireActiveGym();
 
   const [{ data: branches }, { data: sessions }, { data: members }] =
@@ -28,12 +43,33 @@ export default async function ClassesPage() {
     ]);
 
   const memberIds = members?.map((m) => m.user_id) ?? [];
-  const { data: profiles } = memberIds.length
+  const [profilesResult, attendanceLeaderboard] = await Promise.all([
+    memberIds.length
+      ? supabase
+          .from("profiles")
+          .select("id,full_name,email")
+          .in("id", memberIds)
+      : Promise.resolve({ data: [] }),
+    getClassAttendanceLeaderboard(gym.id),
+  ]);
+
+  const { data: profiles } = profilesResult;
+
+  const sessionIds = sessions?.map((session) => session.id) ?? [];
+  const { data: attendanceRows } = sessionIds.length
     ? await supabase
-        .from("profiles")
-        .select("id,full_name,email")
-        .in("id", memberIds)
+        .from("class_attendance")
+        .select("session_id,user_id")
+        .in("session_id", sessionIds)
     : { data: [] };
+
+  const attendanceBySession = new Map<string, number>();
+  for (const row of attendanceRows ?? []) {
+    attendanceBySession.set(
+      row.session_id,
+      (attendanceBySession.get(row.session_id) ?? 0) + 1,
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -81,14 +117,27 @@ export default async function ClassesPage() {
       </Card>
 
       <Card className="p-6 space-y-4">
-        <h2 className="text-sm font-semibold">Recent sessions</h2>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">Recent sessions</h2>
+            <p className="text-xs text-muted-foreground">
+              Attendance is tracked automatically when members are marked in.
+            </p>
+          </div>
+          <Badge variant="outline">Attendance</Badge>
+        </div>
         <div className="space-y-3 text-sm text-muted-foreground">
           {sessions?.map((session) => (
             <div
               key={session.id}
               className="space-y-2 rounded-md border border-border/60 p-3"
             >
-              <div className="text-foreground font-medium">{session.name}</div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-foreground font-medium">{session.name}</div>
+                <Badge variant="secondary">
+                  {attendanceBySession.get(session.id) ?? 0} attended
+                </Badge>
+              </div>
               <div className="text-xs text-muted-foreground">
                 {new Date(session.starts_at).toLocaleString()} -{" "}
                 {new Date(session.ends_at).toLocaleTimeString()}
@@ -101,7 +150,7 @@ export default async function ClassesPage() {
                 >
                   {profiles?.map((profile) => (
                     <option key={profile.id} value={profile.id}>
-                      {profile.full_name || profile.email}
+                      {formatName(profile)}
                     </option>
                   ))}
                 </select>
@@ -113,6 +162,44 @@ export default async function ClassesPage() {
           ))}
           {!sessions?.length ? (
             <div>No classes scheduled yet.</div>
+          ) : null}
+        </div>
+      </Card>
+
+      <Card className="p-6 space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">Class attendance leaderboard</h2>
+            <p className="text-xs text-muted-foreground">
+              Built from recorded attendance across all sessions.
+            </p>
+          </div>
+          <Badge variant="secondary">Top attendees</Badge>
+        </div>
+        <div className="space-y-3">
+          {attendanceLeaderboard.slice(0, 6).map((member, index) => (
+            <div
+              key={member.id}
+              className="flex items-center justify-between rounded-md border border-border/60 p-3 text-sm"
+            >
+              <div>
+                <div className="font-medium">
+                  #{index + 1} {formatName(member)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Last attended{" "}
+                  {member.last_attended_at
+                    ? new Date(member.last_attended_at).toLocaleDateString()
+                    : "unknown"}
+                </div>
+              </div>
+              <Badge variant="outline">{member.attendance_count} classes</Badge>
+            </div>
+          ))}
+          {!attendanceLeaderboard.length ? (
+            <div className="text-sm text-muted-foreground">
+              No class attendance data yet.
+            </div>
           ) : null}
         </div>
       </Card>

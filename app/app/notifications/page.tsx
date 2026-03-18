@@ -1,10 +1,19 @@
+import { Suspense } from "react";
 import { requireActiveGym } from "@/lib/app/server";
 import { markNotificationRead } from "./actions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-export default async function NotificationsPage() {
+export default function NotificationsPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading notifications...</div>}>
+      <NotificationsContent />
+    </Suspense>
+  );
+}
+
+async function NotificationsContent() {
   const { supabase, user, gym } = await requireActiveGym();
 
   const { data: notifications } = await supabase

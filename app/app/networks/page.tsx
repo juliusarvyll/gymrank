@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { requireUser } from "@/lib/app/server";
 import { getActiveNetworkForUser } from "@/lib/app/queries";
 import {
@@ -12,7 +13,15 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-export default async function NetworksPage() {
+export default function NetworksPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading networks...</div>}>
+      <NetworksContent />
+    </Suspense>
+  );
+}
+
+async function NetworksContent() {
   const { supabase, user } = await requireUser();
   const activeNetwork = await getActiveNetworkForUser(user.id);
 

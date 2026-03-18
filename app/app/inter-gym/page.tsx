@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { requireActiveGym } from "@/lib/app/server";
 import { getActiveNetworkForUser } from "@/lib/app/queries";
 import { createNetworkChallenge, joinNetworkChallenge } from "./actions";
@@ -7,7 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 
-export default async function InterGymPage() {
+export default function InterGymPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading inter-gym challenges...</div>}>
+      <InterGymContent />
+    </Suspense>
+  );
+}
+
+async function InterGymContent() {
   const { supabase, user, gym } = await requireActiveGym();
   const network = await getActiveNetworkForUser(user.id);
 

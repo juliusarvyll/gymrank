@@ -52,6 +52,18 @@ export async function joinChallenge(formData: FormData) {
 
   const { supabase, user } = await requireActiveGym();
 
+  const { data: existingParticipant } = await supabase
+    .from("challenge_participants")
+    .select("challenge_id")
+    .eq("challenge_id", challengeId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (existingParticipant) {
+    revalidatePath("/app/challenges");
+    return;
+  }
+
   const { error } = await supabase.from("challenge_participants").insert({
     challenge_id: challengeId,
     user_id: user.id,

@@ -18,11 +18,18 @@ import { useState } from "react";
 
 export function SignUpForm({
   className,
+  redirectTo = "/app",
+  initialAccountType,
   ...props
-}: React.ComponentPropsWithoutRef<"div">) {
+}: React.ComponentPropsWithoutRef<"div"> & {
+  redirectTo?: string;
+  initialAccountType?: "member" | "owner";
+}) {
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
+  const [accountType, setAccountType] = useState(initialAccountType ?? "member");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -44,7 +51,11 @@ export function SignUpForm({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm?next=/app`,
+          data: {
+            full_name: fullName,
+            account_type: accountType,
+          },
+          emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(redirectTo)}`,
         },
       });
       if (error) throw error;
@@ -67,6 +78,17 @@ export function SignUpForm({
           <form onSubmit={handleSignUp}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
+                <Label htmlFor="full-name">Full name</Label>
+                <Input
+                  id="full-name"
+                  type="text"
+                  placeholder="Juan Dela Cruz"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
@@ -76,6 +98,21 @@ export function SignUpForm({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="account-type">Account type</Label>
+                <select
+                  id="account-type"
+                  value={accountType}
+                  onChange={(e) =>
+                    setAccountType(e.target.value as "member" | "owner")
+                  }
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  disabled={Boolean(initialAccountType)}
+                >
+                  <option value="member">Gym-goer</option>
+                  <option value="owner">Gym owner</option>
+                </select>
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
