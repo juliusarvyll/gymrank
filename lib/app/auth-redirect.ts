@@ -1,21 +1,25 @@
 import type { User } from "@supabase/supabase-js";
 import { getActiveGymForUser, getUserMembershipRole } from "@/lib/app/queries";
+import {
+  resolveSurfacePostAuthRedirect,
+  type AuthRedirectDeps,
+} from "@/lib/app/auth-redirect-core";
 
-export async function resolvePostAuthRedirect(user: User) {
-  const gym = await getActiveGymForUser(user.id);
+const defaultDeps: AuthRedirectDeps = {
+  getActiveGymForUser,
+  getUserMembershipRole,
+};
 
-  if (gym) {
-    const membership = await getUserMembershipRole(user.id, gym.id);
-    if (membership?.role === "owner" || membership?.role === "staff") {
-      return "/app";
-    }
+export async function resolveMemberPostAuthRedirect(
+  user: User,
+  deps?: AuthRedirectDeps,
+) {
+  return resolveSurfacePostAuthRedirect(user, "member", deps ?? defaultDeps);
+}
 
-    return "/member";
-  }
-
-  if (user.user_metadata?.account_type === "owner") {
-    return "/app/onboarding";
-  }
-
-  return "/member";
+export async function resolveAdminPostAuthRedirect(
+  user: User,
+  deps?: AuthRedirectDeps,
+) {
+  return resolveSurfacePostAuthRedirect(user, "admin", deps ?? defaultDeps);
 }

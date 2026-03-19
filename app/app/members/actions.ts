@@ -1,39 +1,28 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireActiveGym } from "@/lib/app/server";
+import { requireAdminPermission } from "@/lib/app/server";
+import { revalidateAdminSurface, revalidateMemberSurface } from "@/lib/app/revalidate";
+import { assertGymPlanOwnership } from "@/lib/app/membership-admin";
 
 export async function addMember(formData: FormData) {
   const email = String(formData.get("email") || "").trim().toLowerCase();
-  const role = String(formData.get("role") || "member");
-  const tier = String(formData.get("tier") || "").trim();
+  const requestedRole = String(formData.get("role") || "member");
+  const planId = String(formData.get("plan_id") || "").trim() || null;
 
   if (!email) {
     throw new Error("Email is required.");
   }
 
-  const { gym, supabase, user } = await requireActiveGym();
-
-  const { data: membership } = await supabase
-    .from("gym_memberships")
-    .select("role")
-    .eq("gym_id", gym.id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (membership?.role !== "owner" && membership?.role !== "staff") {
-    throw new Error("Only staff can add members.");
-  }
-
-  const isOwner = membership?.role === "owner";
+  const { gym, role: adminRole, user } = await requireAdminPermission();
+  const isOwner = adminRole.role === "owner";
   const admin = createAdminClient();
 
   if (!admin) {
-    throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY is required to add members by email.",
-    );
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is required to add members by email.");
   }
+
+  await assertGymPlanOwnership(admin, gym.id, isOwner ? planId : null);
 
   const { data: profile, error: profileError } = await admin
     .from("profiles")
@@ -50,9 +39,9 @@ export async function addMember(formData: FormData) {
   const { error: membershipError } = await admin.from("gym_memberships").insert({
     gym_id: gym.id,
     user_id: userId,
-    role: isOwner ? role : "member",
+    role: isOwner ? requestedRole : "member",
     status: "active",
-    tier: isOwner && tier ? tier : null,
+    plan_id: isOwner ? planId : null,
     invited_by: user.id,
   });
 
@@ -66,44 +55,44 @@ export async function addMember(formData: FormData) {
     .eq("id", userId)
     .is("active_gym_id", null);
 
-  revalidatePath("/app/members");
+  revalidateAdminSurface("/admin/members", "/admin/billing", "/admin/membership-plans");
+  revalidateMemberSurface("/", "/profile");
 }
 
 export async function updateMemberAccess(formData: FormData) {
-  const userId = String(formData.get("user_id") || "");
-  const status = String(formData.get("status") || "active");
-  const role = String(formData.get("role") || "member");
-  const tier = String(formData.get("tier") || "").trim();
+  const userId = String(formData.get("user_id") || "").trim();
+  const status = String(formData.get("status") || "active").trim();
+  const requestedRole = String(formData.get("role") || "member").trim();
+  const planId = String(formData.get("plan_id") || "").trim() || null;
 
-  const { gym, supabase, user } = await requireActiveGym();
-
-  const { data: membership } = await supabase
-    .from("gym_memberships")
-    .select("role")
-    .eq("gym_id", gym.id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (membership?.role !== "owner" && membership?.role !== "staff") {
-    throw new Error("Only staff can update member access.");
+  if (!userId) {
+    throw new Error("User id is required.");
   }
+
+  const { gym, role: adminRole, supabase } = await requireAdminPermission();
 
   const updatePayload: {
     status: string;
     role?: string;
-    tier?: string | null;
+    plan_id?: string | null;
   } = { status };
 
-  if (membership.role === "owner") {
-    updatePayload.role = role;
-    updatePayload.tier = tier || null;
+  if (adminRole.role === "owner") {
+    await assertGymPlanOwnership(supabase, gym.id, planId);
+    updatePayload.role = requestedRole;
+    updatePayload.plan_id = planId;
   }
 
-  await supabase
+  const { error } = await supabase
     .from("gym_memberships")
     .update(updatePayload)
     .eq("gym_id", gym.id)
     .eq("user_id", userId);
 
-  revalidatePath("/app/members");
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidateAdminSurface("/admin/members", "/admin/billing", "/admin/membership-plans");
+  revalidateMemberSurface("/", "/profile");
 }

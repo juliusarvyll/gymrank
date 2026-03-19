@@ -14,16 +14,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { startTransition, useState } from "react";
 
 export function SignUpForm({
   className,
   redirectTo = "/auth/redirect",
   initialAccountType,
+  loginHref,
+  successRedirectTo,
   ...props
 }: React.ComponentPropsWithoutRef<"div"> & {
   redirectTo?: string;
   initialAccountType?: "member" | "owner";
+  loginHref?: string;
+  successRedirectTo?: string;
 }) {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -33,6 +37,7 @@ export function SignUpForm({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const errorId = "sign-up-form-error";
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +64,10 @@ export function SignUpForm({
         },
       });
       if (error) throw error;
-      router.push("/auth/sign-up-success");
+      startTransition(() => {
+        router.replace(successRedirectTo ?? "/sign-up-success");
+        router.refresh();
+      });
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
@@ -86,6 +94,8 @@ export function SignUpForm({
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
+                  aria-invalid={error ? "true" : "false"}
+                  aria-describedby={error ? errorId : undefined}
                 />
               </div>
               <div className="grid gap-2">
@@ -97,6 +107,8 @@ export function SignUpForm({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  aria-invalid={error ? "true" : "false"}
+                  aria-describedby={error ? errorId : undefined}
                 />
               </div>
               <div className="grid gap-2">
@@ -109,6 +121,8 @@ export function SignUpForm({
                   }
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                   disabled={Boolean(initialAccountType)}
+                  aria-invalid={error ? "true" : "false"}
+                  aria-describedby={error ? errorId : undefined}
                 >
                   <option value="member">Gym-goer</option>
                   <option value="owner">Gym owner</option>
@@ -124,6 +138,8 @@ export function SignUpForm({
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  aria-invalid={error ? "true" : "false"}
+                  aria-describedby={error ? errorId : undefined}
                 />
               </div>
               <div className="grid gap-2">
@@ -136,9 +152,20 @@ export function SignUpForm({
                   required
                   value={repeatPassword}
                   onChange={(e) => setRepeatPassword(e.target.value)}
+                  aria-invalid={error ? "true" : "false"}
+                  aria-describedby={error ? errorId : undefined}
                 />
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
+              {error ? (
+                <p
+                  id={errorId}
+                  role="alert"
+                  aria-live="assertive"
+                  className="text-sm text-red-700"
+                >
+                  {error}
+                </p>
+              ) : null}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Creating an account..." : "Sign up"}
               </Button>
@@ -146,7 +173,7 @@ export function SignUpForm({
             <div className="mt-4 text-center text-sm">
               Already have an account?{" "}
               <Link
-                href={`/auth/login?next=${encodeURIComponent(redirectTo)}`}
+                href={loginHref ?? `/login?next=${encodeURIComponent(redirectTo)}`}
                 className="underline underline-offset-4"
               >
                 Login

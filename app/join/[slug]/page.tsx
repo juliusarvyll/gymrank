@@ -67,7 +67,7 @@ async function ResolvedJoinGymPage({ params }: JoinGymPageProps) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      redirect(`/auth/login?next=${encodeURIComponent(joinPath)}`);
+      redirect(`/login?next=${encodeURIComponent(joinPath)}`);
     }
 
     const admin = createAdminClient();
@@ -86,7 +86,6 @@ async function ResolvedJoinGymPage({ params }: JoinGymPageProps) {
         user_id: user.id,
         role: "member",
         status: "inactive",
-        tier: null,
       });
 
       if (error) {
@@ -94,7 +93,12 @@ async function ResolvedJoinGymPage({ params }: JoinGymPageProps) {
       }
     }
 
-    redirect("/app/onboarding");
+    await db
+      .from("profiles")
+      .update({ active_gym_id: resolvedGym.id })
+      .eq("id", user.id);
+
+    redirect("/");
   }
 
   if (!user) {
@@ -110,13 +114,13 @@ async function ResolvedJoinGymPage({ params }: JoinGymPageProps) {
           </div>
           <div className="flex flex-wrap gap-3">
             <Button asChild>
-              <Link href={`/auth/login?next=${encodeURIComponent(next)}`}>
+              <Link href={`/login?next=${encodeURIComponent(next)}`}>
                 Login
               </Link>
             </Button>
             <Button asChild variant="outline">
               <Link
-                href={`/auth/sign-up?next=${encodeURIComponent(next)}&accountType=member`}
+                href={`/sign-up?next=${encodeURIComponent(next)}&accountType=member`}
               >
                 Sign up as gym-goer
               </Link>
@@ -136,7 +140,7 @@ async function ResolvedJoinGymPage({ params }: JoinGymPageProps) {
 
   if (membership?.status === "active") {
     await supabase.from("profiles").update({ active_gym_id: gym.id }).eq("id", user.id);
-    redirect("/member");
+    redirect("/");
   }
 
   if (membership?.status === "inactive" || membership?.status === "suspended") {
@@ -146,7 +150,7 @@ async function ResolvedJoinGymPage({ params }: JoinGymPageProps) {
           <h1 className="text-xl font-semibold">Access requested</h1>
           <p className="text-sm text-muted-foreground">
             Your account is linked to {gym.name}, but a gym owner still needs to
-            activate your membership and set your subscription.
+            activate your membership and assign your plan.
           </p>
           <div className="text-xs text-muted-foreground">Signed in as {user.email}</div>
         </Card>
@@ -161,7 +165,7 @@ async function ResolvedJoinGymPage({ params }: JoinGymPageProps) {
           <h1 className="text-2xl font-semibold">Join {gym.name}</h1>
           <p className="text-sm text-muted-foreground">
             Request member access. A gym owner will activate your account and set
-            your subscription after you join.
+            your membership plan after you join.
           </p>
         </div>
         <form action={requestGymAccess}>

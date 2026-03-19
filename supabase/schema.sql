@@ -29,6 +29,18 @@ do $$ begin
   create type network_role as enum ('owner', 'admin', 'member');
 exception when duplicate_object then null; end $$;
 
+do $$ begin
+  create type billing_interval as enum ('weekly', 'monthly', 'quarterly', 'yearly');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type class_booking_status as enum ('booked', 'waitlisted', 'cancelled');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type invoice_status as enum ('draft', 'sent', 'paid', 'overdue', 'void');
+exception when duplicate_object then null; end $$;
+
 -- Profiles
 create table if not exists profiles (
   id uuid primary key references auth.users on delete cascade,
@@ -294,9 +306,75 @@ create table if not exists class_sessions (
   name text not null,
   starts_at timestamptz not null,
   ends_at timestamptz not null,
+  capacity int,
+  waitlist_capacity int,
   created_by uuid references auth.users on delete set null,
   created_at timestamptz not null default now()
 );
+
+create table if not exists membership_plans (
+  id uuid primary key default gen_random_uuid(),
+  gym_id uuid not null references gyms on delete cascade,
+  name text not null,
+  description text,
+  billing_interval billing_interval not null default 'monthly',
+  price_cents int not null default 0,
+  active boolean not null default true,
+  created_by uuid references auth.users on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table gym_memberships
+  add column if not exists plan_id uuid references membership_plans on delete set null;
+
+create table if not exists class_bookings (
+  id uuid primary key default gen_random_uuid(),
+  session_id uuid not null references class_sessions on delete cascade,
+  user_id uuid not null references auth.users on delete cascade,
+  status class_booking_status not null default 'booked',
+  booked_by_user_id uuid references auth.users on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (session_id, user_id)
+);
+
+create table if not exists member_invoices (
+  id uuid primary key default gen_random_uuid(),
+  gym_id uuid not null references gyms on delete cascade,
+  user_id uuid not null references auth.users on delete cascade,
+  plan_id uuid references membership_plans on delete set null,
+  invoice_number text not null unique,
+  description text not null,
+  amount_cents int not null check (amount_cents >= 0),
+  currency text not null default 'USD',
+  due_date date not null,
+  status invoice_status not null default 'draft',
+  issued_by uuid references auth.users on delete set null,
+  emailed_at timestamptz,
+  paid_at timestamptz,
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists member_invoices_gym_id_idx on public.member_invoices (gym_id, created_at desc);
+create index if not exists member_invoices_user_id_idx on public.member_invoices (user_id, created_at desc);
+
+create or replace function public.touch_class_booking_updated_at()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+drop trigger if exists on_class_booking_update on public.class_bookings;
+create trigger on_class_booking_update
+before update on public.class_bookings
+for each row execute procedure public.touch_class_booking_updated_at();
 
 create table if not exists class_attendance (
   session_id uuid not null references class_sessions on delete cascade,
@@ -800,6 +878,54 @@ using (public.is_gym_member((select gym_id from class_sessions cs where cs.id = 
 create policy "attendance insert by staff"
 on class_attendance for insert
 with check (public.is_gym_staff((select gym_id from class_sessions cs where cs.id = session_id)));
+
+alter table membership_plans enable row level security;
+create policy "membership plans readable by members"
+on membership_plans for select
+using (public.is_gym_member(gym_id));
+create policy "membership plans insert by staff"
+on membership_plans for insert
+with check (public.is_gym_staff(gym_id));
+create policy "membership plans update by staff"
+on membership_plans for update
+using (public.is_gym_staff(gym_id));
+
+alter table class_bookings enable row level security;
+create policy "class bookings readable by members"
+on class_bookings for select
+using (
+  public.is_gym_member(
+    (select gym_id from class_sessions cs where cs.id = session_id)
+  )
+);
+create policy "class bookings insert by staff"
+on class_bookings for insert
+with check (
+  public.is_gym_staff(
+    (select gym_id from class_sessions cs where cs.id = session_id)
+  )
+);
+create policy "class bookings update by staff"
+on class_bookings for update
+using (
+  public.is_gym_staff(
+    (select gym_id from class_sessions cs where cs.id = session_id)
+  )
+);
+
+alter table member_invoices enable row level security;
+create policy "member invoices readable by members"
+on member_invoices for select
+using (
+  public.is_gym_staff(gym_id)
+  or auth.uid() = user_id
+);
+create policy "member invoices insert by staff"
+on member_invoices for insert
+with check (public.is_gym_staff(gym_id));
+create policy "member invoices update by staff"
+on member_invoices for update
+using (public.is_gym_staff(gym_id));
 
 alter table xp_events enable row level security;
 create policy "xp readable by members"

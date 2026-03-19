@@ -1,6 +1,6 @@
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { sendChallengeCompletionNotification } from "@/app/app/notifications/actions";
+import { sendChallengeCompletionNotification } from "@/lib/app/notifications";
+import { revalidateAdminSurface, revalidateMemberSurface } from "@/lib/app/revalidate";
 
 type RecordCheckinInput = {
   gymId: string;
@@ -90,11 +90,8 @@ export async function recordCheckin(input: RecordCheckinInput) {
   }
 
   if (newlyCompleted.length) {
-    revalidatePath("/app/challenges");
-    revalidatePath("/app/notifications");
-    revalidatePath("/member/challenges");
-    revalidatePath("/member/notifications");
-    revalidatePath("/member");
+    revalidateAdminSurface("/admin/challenges", "/admin/notifications");
+    revalidateMemberSurface("/", "/challenges", "/notifications");
   }
 
   return checkin.id as string;

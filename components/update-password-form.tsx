@@ -17,8 +17,11 @@ import { startTransition, useState } from "react";
 
 export function UpdatePasswordForm({
   className,
+  redirectTo = "/auth/redirect",
   ...props
-}: React.ComponentPropsWithoutRef<"div">) {
+}: React.ComponentPropsWithoutRef<"div"> & {
+  redirectTo?: string;
+}) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -34,7 +37,7 @@ export function UpdatePasswordForm({
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       startTransition(() => {
-        router.replace("/auth/redirect");
+        router.replace(redirectTo);
         router.refresh();
       });
     } catch (error: unknown) {

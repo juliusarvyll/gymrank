@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { requireActiveGym } from "@/lib/app/server";
+import { requireAdminPermission } from "@/lib/app/server";
+import { revalidateAdminSurface, revalidateMemberSurface } from "@/lib/app/revalidate";
 
 export async function postShoutout(formData: FormData) {
   const message = String(formData.get("message") || "").trim();
@@ -9,7 +9,7 @@ export async function postShoutout(formData: FormData) {
 
   if (!message) return;
 
-  const { supabase, user, gym } = await requireActiveGym();
+  const { supabase, user, gym } = await requireAdminPermission();
 
   await supabase.from("activity_events").insert({
     gym_id: gym.id,
@@ -19,16 +19,15 @@ export async function postShoutout(formData: FormData) {
     data: { message },
   });
 
-  revalidatePath("/app/community");
-  revalidatePath("/member/community");
-  revalidatePath("/member");
+  revalidateAdminSurface("/admin/community");
+  revalidateMemberSurface("/", "/community");
 }
 
 export async function toggleActivityReaction(formData: FormData) {
   const activityEventId = String(formData.get("activity_event_id") || "");
   if (!activityEventId) return;
 
-  const { supabase, user, gym } = await requireActiveGym();
+  const { supabase, user, gym } = await requireAdminPermission();
 
   const { data: existingReaction, error: reactionLookupError } = await supabase
     .from("activity_reactions")
@@ -63,9 +62,8 @@ export async function toggleActivityReaction(formData: FormData) {
     }
   }
 
-  revalidatePath("/app/community");
-  revalidatePath("/member/community");
-  revalidatePath("/member");
+  revalidateAdminSurface("/admin/community");
+  revalidateMemberSurface("/", "/community");
 }
 
 export async function addActivityComment(formData: FormData) {
@@ -74,7 +72,7 @@ export async function addActivityComment(formData: FormData) {
 
   if (!activityEventId || !body) return;
 
-  const { supabase, user, gym } = await requireActiveGym();
+  const { supabase, user, gym } = await requireAdminPermission();
 
   const { error } = await supabase.from("activity_comments").insert({
     gym_id: gym.id,
@@ -87,7 +85,6 @@ export async function addActivityComment(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidatePath("/app/community");
-  revalidatePath("/member/community");
-  revalidatePath("/member");
+  revalidateAdminSurface("/admin/community");
+  revalidateMemberSurface("/", "/community");
 }

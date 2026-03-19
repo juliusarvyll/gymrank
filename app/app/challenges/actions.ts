@@ -1,8 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { requireActiveGym } from "@/lib/app/server";
-import { sendChallengeCompletionNotification } from "@/app/app/notifications/actions";
+import { requireAdminPermission } from "@/lib/app/server";
+import { sendChallengeCompletionNotification } from "@/lib/app/notifications";
+import { revalidateAdminSurface, revalidateMemberSurface } from "@/lib/app/revalidate";
 
 export async function createChallenge(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
@@ -17,17 +17,7 @@ export async function createChallenge(formData: FormData) {
     throw new Error("Challenge name and dates are required.");
   }
 
-  const { supabase, user, gym } = await requireActiveGym();
-  const { data: membership } = await supabase
-    .from("gym_memberships")
-    .select("role")
-    .eq("gym_id", gym.id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (membership?.role !== "owner" && membership?.role !== "staff") {
-    throw new Error("Only staff can create challenges.");
-  }
+  const { supabase, user, gym } = await requireAdminPermission();
 
   const { error } = await supabase.from("challenges").insert({
     gym_id: gym.id,
@@ -43,14 +33,14 @@ export async function createChallenge(formData: FormData) {
 
   if (error) throw new Error(error.message);
 
-  revalidatePath("/app/challenges");
+  revalidateAdminSurface("/admin/challenges");
 }
 
 export async function joinChallenge(formData: FormData) {
   const challengeId = String(formData.get("challenge_id") || "");
   if (!challengeId) return;
 
-  const { supabase, user } = await requireActiveGym();
+  const { supabase, user } = await requireAdminPermission();
 
   const { data: existingParticipant } = await supabase
     .from("challenge_participants")
@@ -60,9 +50,8 @@ export async function joinChallenge(formData: FormData) {
     .maybeSingle();
 
   if (existingParticipant) {
-    revalidatePath("/app/challenges");
-    revalidatePath("/member/challenges");
-    revalidatePath("/member");
+    revalidateAdminSurface("/admin/challenges");
+    revalidateMemberSurface("/", "/challenges");
     return;
   }
 
@@ -73,9 +62,8 @@ export async function joinChallenge(formData: FormData) {
 
   if (error) throw new Error(error.message);
 
-  revalidatePath("/app/challenges");
-  revalidatePath("/member/challenges");
-  revalidatePath("/member");
+  revalidateAdminSurface("/admin/challenges");
+  revalidateMemberSurface("/", "/challenges");
 }
 
 export async function completeChallenge(formData: FormData) {
@@ -83,17 +71,7 @@ export async function completeChallenge(formData: FormData) {
   const userId = String(formData.get("user_id") || "");
   if (!challengeId || !userId) return;
 
-  const { supabase, gym, user } = await requireActiveGym();
-  const { data: membership } = await supabase
-    .from("gym_memberships")
-    .select("role")
-    .eq("gym_id", gym.id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (membership?.role !== "owner" && membership?.role !== "staff") {
-    throw new Error("Only staff can complete challenges.");
-  }
+  const { supabase, gym } = await requireAdminPermission();
 
   const { data: challenge } = await supabase
     .from("challenges")
@@ -113,7 +91,7 @@ export async function completeChallenge(formData: FormData) {
   }
 
   if (participant?.completed_at) {
-    revalidatePath("/app/challenges");
+    revalidateAdminSurface("/admin/challenges");
     return;
   }
 
@@ -152,6 +130,6 @@ export async function completeChallenge(formData: FormData) {
     });
   }
 
-  revalidatePath("/app/challenges");
-  revalidatePath("/app/notifications");
+  revalidateAdminSurface("/admin/challenges", "/admin/notifications");
+  revalidateMemberSurface("/", "/challenges", "/notifications");
 }

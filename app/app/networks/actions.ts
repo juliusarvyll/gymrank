@@ -1,10 +1,28 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { requireUser } from "@/lib/app/server";
+import { requireAdminPermission } from "@/lib/app/server";
+import { revalidateAdminSurface } from "@/lib/app/revalidate";
+
+async function requireNetworkAdmin(supabase: Awaited<ReturnType<typeof createClient>>, userId: string, networkId: string) {
+  const { data: membership, error } = await supabase
+    .from("network_memberships")
+    .select("role,status")
+    .eq("network_id", networkId)
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (membership?.role !== "owner" && membership?.role !== "admin") {
+    throw new Error("Only network admins can manage this network.");
+  }
+}
 
 export async function createNetwork(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
@@ -19,7 +37,7 @@ export async function createNetwork(formData: FormData) {
     throw new Error("Network name and slug are required.");
   }
 
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireAdminPermission();
   const admin = createAdminClient();
 
   if (!admin) {
@@ -58,21 +76,17 @@ export async function createNetwork(formData: FormData) {
     throw new Error(profileError.message);
   }
 
-  revalidatePath("/app/networks");
-  revalidatePath("/app/inter-gym");
+  revalidateAdminSurface("/admin/networks", "/admin/inter-gym");
 
-  redirect("/app/networks");
+  redirect("/admin/networks");
 }
 
 export async function setActiveNetwork(formData: FormData) {
   const networkId = String(formData.get("network_id") || "");
   if (!networkId) return;
 
+  const { user } = await requireAdminPermission();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return;
 
   const { data: membership, error: membershipError } = await supabase
     .from("network_memberships")
@@ -99,8 +113,7 @@ export async function setActiveNetwork(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidatePath("/app/networks");
-  revalidatePath("/app/inter-gym");
+  revalidateAdminSurface("/admin/networks", "/admin/inter-gym");
 }
 
 export async function addGymToNetwork(formData: FormData) {
@@ -108,7 +121,8 @@ export async function addGymToNetwork(formData: FormData) {
   const gymId = String(formData.get("gym_id") || "");
   if (!networkId || !gymId) return;
 
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireAdminPermission();
+  await requireNetworkAdmin(supabase, user.id, networkId);
 
   const { error } = await supabase.from("network_gyms").upsert(
     {
@@ -123,8 +137,7 @@ export async function addGymToNetwork(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidatePath("/app/networks");
-  revalidatePath("/app/inter-gym");
+  revalidateAdminSurface("/admin/networks", "/admin/inter-gym");
 }
 
 export async function addNetworkMember(formData: FormData) {
@@ -134,7 +147,8 @@ export async function addNetworkMember(formData: FormData) {
 
   if (!networkId || !email) return;
 
-  await requireUser();
+  const { supabase, user } = await requireAdminPermission();
+  await requireNetworkAdmin(supabase, user.id, networkId);
   const admin = createAdminClient();
 
   if (!admin) {
@@ -169,6 +183,5 @@ export async function addNetworkMember(formData: FormData) {
     throw new Error(membershipError.message);
   }
 
-  revalidatePath("/app/networks");
-  revalidatePath("/app/inter-gym");
+  revalidateAdminSurface("/admin/networks", "/admin/inter-gym");
 }

@@ -1,20 +1,9 @@
 "use server";
 
-import { requireActiveGym } from "@/lib/app/server";
+import { requireAdminPermission } from "@/lib/app/server";
 
 export async function generateRetentionAlerts() {
-  const { supabase, gym, user } = await requireActiveGym();
-
-  const { data: membership } = await supabase
-    .from("gym_memberships")
-    .select("role")
-    .eq("gym_id", gym.id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (membership?.role !== "owner" && membership?.role !== "staff") {
-    throw new Error("Only staff can send retention alerts.");
-  }
+  const { supabase, gym } = await requireAdminPermission();
 
   const { data: inactiveMembers } = await supabase
     .from("v_inactive_members")

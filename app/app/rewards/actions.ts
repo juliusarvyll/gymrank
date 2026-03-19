@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { requireActiveGym } from "@/lib/app/server";
+import { requireAdminPermission } from "@/lib/app/server";
+import { revalidateAdminSurface, revalidateMemberSurface } from "@/lib/app/revalidate";
 
 export async function createReward(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
@@ -13,17 +13,7 @@ export async function createReward(formData: FormData) {
     throw new Error("Name and XP cost are required.");
   }
 
-  const { supabase, user, gym } = await requireActiveGym();
-  const { data: membership } = await supabase
-    .from("gym_memberships")
-    .select("role")
-    .eq("gym_id", gym.id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (membership?.role !== "owner" && membership?.role !== "staff") {
-    throw new Error("Only staff can create rewards.");
-  }
+  const { supabase, user, gym } = await requireAdminPermission();
 
   await supabase.from("rewards").insert({
     gym_id: gym.id,
@@ -34,14 +24,14 @@ export async function createReward(formData: FormData) {
     created_by: user.id,
   });
 
-  revalidatePath("/app/rewards");
+  revalidateAdminSurface("/admin/rewards");
 }
 
 export async function redeemReward(formData: FormData) {
   const rewardId = String(formData.get("reward_id") || "");
   if (!rewardId) return;
 
-  const { supabase, user, gym } = await requireActiveGym();
+  const { supabase, user, gym } = await requireAdminPermission();
 
   const [{ data: reward }, { data: stats }] = await Promise.all([
     supabase
@@ -93,29 +83,15 @@ export async function redeemReward(formData: FormData) {
       .eq("gym_id", gym.id);
   }
 
-  revalidatePath("/app/rewards");
-  revalidatePath("/app/profile");
-  revalidatePath("/app");
-  revalidatePath("/member/rewards");
-  revalidatePath("/member/profile");
-  revalidatePath("/member");
+  revalidateAdminSurface("/admin", "/admin/rewards", "/admin/profile");
+  revalidateMemberSurface("/", "/rewards", "/profile");
 }
 
 export async function updateRedemptionStatus(formData: FormData) {
   const redemptionId = String(formData.get("redemption_id") || "");
   const status = String(formData.get("status") || "pending");
 
-  const { supabase, gym, user } = await requireActiveGym();
-  const { data: membership } = await supabase
-    .from("gym_memberships")
-    .select("role")
-    .eq("gym_id", gym.id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (membership?.role !== "owner" && membership?.role !== "staff") {
-    throw new Error("Only staff can update redemptions.");
-  }
+  const { supabase, gym } = await requireAdminPermission();
 
   const { data: redemption } = await supabase
     .from("reward_redemptions")
@@ -159,7 +135,5 @@ export async function updateRedemptionStatus(formData: FormData) {
     }
   }
 
-  revalidatePath("/app/rewards");
-  revalidatePath("/app/profile");
-  revalidatePath("/app");
+  revalidateAdminSurface("/admin", "/admin/rewards", "/admin/profile");
 }

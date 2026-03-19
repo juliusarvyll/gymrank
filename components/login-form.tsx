@@ -19,13 +19,20 @@ import { startTransition, useState } from "react";
 export function LoginForm({
   className,
   redirectTo = "/auth/redirect",
+  signUpHref,
+  forgotPasswordHref,
   ...props
-}: React.ComponentPropsWithoutRef<"div"> & { redirectTo?: string }) {
+}: React.ComponentPropsWithoutRef<"div"> & {
+  redirectTo?: string;
+  signUpHref?: string;
+  forgotPasswordHref?: string;
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const errorId = "login-form-error";
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,13 +78,15 @@ export function LoginForm({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  aria-invalid={error ? "true" : "false"}
+                  aria-describedby={error ? errorId : undefined}
                 />
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
                   <Label htmlFor="password">Password</Label>
                   <Link
-                    href="/auth/forgot-password"
+                    href={forgotPasswordHref ?? "/forgot-password"}
                     className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
                   >
                     Forgot your password?
@@ -89,9 +98,20 @@ export function LoginForm({
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  aria-invalid={error ? "true" : "false"}
+                  aria-describedby={error ? errorId : undefined}
                 />
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
+              {error ? (
+                <p
+                  id={errorId}
+                  role="alert"
+                  aria-live="assertive"
+                  className="text-sm text-red-700"
+                >
+                  {error}
+                </p>
+              ) : null}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Logging in..." : "Login"}
               </Button>
@@ -99,7 +119,7 @@ export function LoginForm({
             <div className="mt-4 text-center text-sm">
               Don&apos;t have an account?{" "}
               <Link
-                href={`/auth/sign-up?next=${encodeURIComponent(redirectTo)}`}
+                href={signUpHref ?? `/sign-up?next=${encodeURIComponent(redirectTo)}`}
                 className="underline underline-offset-4"
               >
                 Sign up

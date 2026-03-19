@@ -5,6 +5,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "test": "node --experimental-specifier-resolution=node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON --import ts-node/register --test tests/**/*.test.ts",
      "postinstall": "prisma generate"
   },
   "dependencies": {

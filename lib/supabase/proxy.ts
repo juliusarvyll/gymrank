@@ -51,11 +51,24 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname !== "/" &&
     !user &&
     !request.nextUrl.pathname.startsWith("/login") &&
+    !request.nextUrl.pathname.startsWith("/admin/login") &&
+    !request.nextUrl.pathname.startsWith("/sign-up") &&
+    !request.nextUrl.pathname.startsWith("/admin/sign-up") &&
+    !request.nextUrl.pathname.startsWith("/forgot-password") &&
+    !request.nextUrl.pathname.startsWith("/admin/forgot-password") &&
+    !request.nextUrl.pathname.startsWith("/update-password") &&
+    !request.nextUrl.pathname.startsWith("/admin/update-password") &&
     !request.nextUrl.pathname.startsWith("/auth")
   ) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();
-    url.pathname = "/auth/login";
+    url.pathname = request.nextUrl.pathname.startsWith("/admin")
+      ? "/admin/login"
+      : "/login";
+    if (request.nextUrl.pathname !== url.pathname) {
+      const next = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+      url.searchParams.set("next", next);
+    }
     return NextResponse.redirect(url);
   }
 

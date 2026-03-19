@@ -1,6 +1,7 @@
 "use server";
 
-import { requireActiveGym } from "@/lib/app/server";
+import { redirect } from "next/navigation";
+import { requireAdminPermission } from "@/lib/app/server";
 import { createClient } from "@/lib/supabase/server";
 
 export async function setActiveGym(formData: FormData) {
@@ -12,16 +13,36 @@ export async function setActiveGym(formData: FormData) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return;
+  if (!user) {
+    redirect("/admin/login");
+  }
+
+  const { data: membership, error } = await supabase
+    .from("gym_memberships")
+    .select("role,status")
+    .eq("gym_id", gymId)
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!membership) {
+    throw new Error("You are not an active member of that gym.");
+  }
 
   await supabase.from("profiles").update({ active_gym_id: gymId }).eq("id", user.id);
+
+  redirect(membership.role === "owner" || membership.role === "staff" ? "/admin" : "/");
 }
 
 export async function updateGymProfile(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
   const timezone = String(formData.get("timezone") || "").trim();
 
-  const { supabase, gym } = await requireActiveGym();
+  const { supabase, gym } = await requireAdminPermission();
 
   await supabase
     .from("gyms")
@@ -35,7 +56,7 @@ export async function addBranch(formData: FormData) {
 
   if (!name) return;
 
-  const { supabase, gym } = await requireActiveGym();
+  const { supabase, gym } = await requireAdminPermission();
 
   await supabase.from("gym_branches").insert({
     gym_id: gym.id,

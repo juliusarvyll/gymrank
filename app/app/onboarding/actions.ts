@@ -24,7 +24,7 @@ export async function createGym(formData: FormData) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth/login");
+    redirect("/admin/login");
   }
 
   const admin = createAdminClient();
@@ -63,5 +63,5 @@ export async function createGym(formData: FormData) {
       { onConflict: "id" },
     );
 
-  redirect("/app");
+  redirect("/admin");
 }
